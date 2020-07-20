@@ -234,6 +234,7 @@ export async function build(options: BuildConfig): Promise<BuildResult> {
     cssCodeSplit = true,
     alias = {},
     resolvers = [],
+    useSystemJs = false,
     rollupInputOptions = {},
     rollupOutputOptions = {},
     emitIndex = true,
@@ -278,7 +279,8 @@ export async function build(options: BuildConfig): Promise<BuildResult> {
     assetsDir,
     assetsInlineLimit,
     resolver,
-    shouldPreload
+    shouldPreload,
+    useSystemJs
   )
 
   const basePlugins = await createBaseRollupPlugins(root, resolver, options)
@@ -373,7 +375,7 @@ export async function build(options: BuildConfig): Promise<BuildResult> {
   })
 
   const { output } = await bundle.generate({
-    format: 'es',
+    format: useSystemJs ? 'system' : 'es',
     sourcemap,
     entryFileNames: `[name].[hash].js`,
     chunkFileNames: `[name].[hash].js`,

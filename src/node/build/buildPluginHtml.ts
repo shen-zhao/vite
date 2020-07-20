@@ -13,6 +13,7 @@ import {
 } from '@vue/compiler-dom'
 import MagicString from 'magic-string'
 import { InternalResolver } from '../resolver'
+import { BuildConfig } from '..'
 
 export const createBuildHtmlPlugin = async (
   root: string,
@@ -21,7 +22,8 @@ export const createBuildHtmlPlugin = async (
   assetsDir: string,
   inlineLimit: number,
   resolver: InternalResolver,
-  shouldPreload: ((chunk: OutputChunk) => boolean) | null
+  shouldPreload: ((chunk: OutputChunk) => boolean) | null,
+  useSystemJs: NonNullable<BuildConfig['useSystemJs']>
 ) => {
   if (!indexPath || !fs.existsSync(indexPath)) {
     return {
@@ -67,11 +69,35 @@ export const createBuildHtmlPlugin = async (
     }
   }
 
+  const injectSystemJs = (html: string) => {
+    let tag: string
+    if (useSystemJs === false) {
+      return html
+    } else if (useSystemJs === true) {
+      const systemJsRuntime = fs.readFileSync(
+        require.resolve('systemjs/dist/s.min.js'),
+        'utf8'
+      )
+      tag = `<script>${systemJsRuntime}</script>`
+    } else if (typeof useSystemJs === 'string') {
+      tag = `<script src="${useSystemJs}"></script>`
+    } else {
+      return html
+    }
+    if (/<\/body>/.test(html)) {
+      return html.replace(/<\/body>/, `${tag}\n</body>`)
+    } else {
+      return html + '\n' + tag
+    }
+  }
+
   const injectScript = (html: string, filename: string) => {
     filename = isExternalUrl(filename)
       ? filename
       : `${publicBasePath}${path.posix.join(assetsDir, filename)}`
-    const tag = `<script type="module" src="${filename}"></script>`
+    const tag = useSystemJs
+      ? `<script>System.import('${filename}');</script>`
+      : `<script type="module" src="${filename}"></script>`
     if (/<\/body>/.test(html)) {
       return html.replace(/<\/body>/, `${tag}\n</body>`)
     } else {
@@ -92,6 +118,8 @@ export const createBuildHtmlPlugin = async (
   }
 
   const renderIndex = (bundleOutput: RollupOutput['output']) => {
+    processedHtml = injectSystemJs(processedHtml)
+
     for (const chunk of bundleOutput) {
       if (chunk.type === 'chunk') {
         if (chunk.isEntry) {

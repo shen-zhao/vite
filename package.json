@@ -98,6 +98,7 @@
     "rollup-pluginutils": "^2.8.2",
     "selfsigned": "^1.10.7",
     "slash": "^3.0.0",
+    "systemjs": "^6.3.3",
     "vue": "^3.0.0-rc.1",
     "ws": "^7.2.3"
   },
